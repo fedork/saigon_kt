@@ -14,7 +14,8 @@ fun main(args: Array<String>) {
             }
         } else {
             val n = args[0].toInt()
-            printAllSolutions(n)
+            val startK: Int = args.getOrElse(1) { "1" }.toInt()
+            printAllSolutions(n, startK)
         }
     } else {
         for (n in 1..20000) {
@@ -23,9 +24,10 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun printAllSolutions(n: Int, state: State = State(n)) {
+private fun printAllSolutions(n: Int, startK: Int = 1) {
     val start = markNow()
-    for (k in 1..n) {
+    val state = State(n)
+    for (k in startK..n) {
         var count = 0L;
         val solutions = ArrayList<State>()
         val nextStates = state.nextStates(k)
@@ -66,10 +68,10 @@ private fun printFirstSolution(n: Int, state: State = State(n)) {
     }
 }
 
-data class State(val state: Map<Int, Int>, val moves: List<Move>, val blacklist: Set<Int>) {
-    constructor(count: Int) : this(sortedMapOf(Pair(0, count)), emptyList(), setOf(0))
+data class State(val state: Map<Int, Int>, val moves: List<Move>) {
+    constructor(count: Int) : this(sortedMapOf(Pair(0, count)), emptyList())
 
-    val stations = moves.map(State.Move::from).distinct().sorted().filterNot { it == 0 }
+    val stations = moves.map(Move::from).distinct().sorted().filterNot { it == 0 }
 
     data class Move(val from: Int, val to: Int, val distr: Boolean = true) {
         override fun toString(): String {
@@ -86,47 +88,18 @@ data class State(val state: Map<Int, Int>, val moves: List<Move>, val blacklist:
             return sequenceOf(this)
         }
         val lastMove = moves.lastOrNull()
-        if (lastMove != null && lastMove.distr && state.getOrDefault(lastMove.from, 0) > 0) {
-            val from = lastMove.from
+
+        return state.keys.sortedDescending().asSequence().flatMap { from ->
             val coinsLeft = state[from]!!
-//            println("lastMove: $lastMove, coinsLeft: $coinsLeft")
-            val start = min(lastMove.to, from + coinsLeft)
-            return (start downTo from - coinsLeft).asSequence()
-                .filter { to -> to !in blacklist }
-                .flatMap { to ->
-//                    println("to: $to")
-                    move(from, to, movesLeft - 1, blacklist)
-                }
+            val start = min(
+                (from + coinsLeft),
+                moves.filter { it.from == from }.minOfOrNull { it.to } ?: Int.MAX_VALUE)
+            (start downTo from - coinsLeft).asSequence()
+                .filter { it != from }
+                .flatMap { to -> move(from, to, movesLeft - 1, emptySet()) }
                 .flatMap { it.nextStates(movesLeft - 1) }
-        } else { // lastMove == null || state.getOrDefault(lastMove.from, 0) == 0
-//            return state.keys.sorted().asSequence().flatMap { from ->
-//                val coinsLeft = state[from]!!
-//                val newBlacklist = blacklist + from;
-//                (from + coinsLeft downTo from - coinsLeft).asSequence()
-//                    .filter { to -> to !in newBlacklist }
-//                    .flatMap { to ->
-//                        move(from, to, movesLeft - 1, newBlacklist)
-//                    }
-//                    .flatMap { it.nextStates(movesLeft - 1) }
-//            }
-
-
-            val first = state.keys.filter { it != 1 }.min()
-            val coinsLeft = state[first]!!
-            val newBlacklist = blacklist + first;
-            val s1 = (first + coinsLeft downTo first - coinsLeft).asSequence()
-                .filter { it !in newBlacklist }
-                .flatMap { move(first, it, movesLeft - 1, newBlacklist) }
-
-            val s2 = state.entries.filter { it.key != 1 }.sortedBy { it.key }.asSequence()
-                .drop(1) // skip first
-                .dropWhile { lastMove!=null && !lastMove.distr && lastMove.from > it.key } // skip left of the prev move if not distr
-                .filter { abs(it.key - first) <= it.value } // has enough coins to move to first
-                .flatMap { move(it.key, first, movesLeft - 1, blacklist, false) }
-
-
-            return (s1 + s2).flatMap { it.nextStates(movesLeft - 1) }
         }
+
     }
 
     private fun move(
@@ -159,6 +132,6 @@ data class State(val state: Map<Int, Int>, val moves: List<Move>, val blacklist:
             return emptySequence()
         }
 
-        return sequenceOf(State(newState.toMap(), moves + Move(from, to, distr), blacklist))
+        return sequenceOf(State(newState.toMap(), moves + Move(from, to, distr)))
     }
 }
