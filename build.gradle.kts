@@ -1,8 +1,9 @@
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.9.0"
+    id("org.jetbrains.kotlin.jvm") version "2.+"
+    application
 }
 
-group = "org.example"
+group = "net.karpelevitch"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -19,4 +20,7 @@ tasks.test {
 }
 kotlin {
     jvmToolchain(19)
+}
+application {
+    mainClass = "net.karpelevitch.MainKt"
 }
