@@ -1,7 +1,6 @@
 package net.karpelevitch
 
 import kotlin.math.abs
-import kotlin.math.min
 import kotlin.time.TimeSource.Monotonic.markNow
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -46,7 +45,9 @@ private fun printAllSolutions(n: Int, startK: Int = 1) {
                 it.value.size != 2
             }.forEach {
                 println("PROBLEM GROUP ${it.key} / ${it.key.map { 1 - it }.sorted()}:")
-                it.value.forEach { println(it.moves) }
+                it.value.forEach {
+                    println("${it.moves}\treversed->\t${it.moves.reversed().map { it.reverse() }}")
+                }
             }
 
             break
@@ -54,6 +55,7 @@ private fun printAllSolutions(n: Int, startK: Int = 1) {
         println("Can't solve $n in $k moves t=${start.elapsedNow()}")
     }
 }
+
 
 private fun printFirstSolution(n: Int, state: State = State(n)) {
     val start = markNow()
@@ -68,15 +70,22 @@ private fun printFirstSolution(n: Int, state: State = State(n)) {
     }
 }
 
-data class State(val state: Map<Int, Int>, val moves: List<Move>) {
-    constructor(count: Int) : this(sortedMapOf(Pair(0, count)), emptyList())
+data class State(
+    val state: Map<Int, Int>,
+    val moves: List<Move>,
+    val bl: Set<Pair<Int, Int>>
+) {
+    constructor(count: Int) : this(sortedMapOf(Pair(0, count)), emptyList(), emptySet())
 
-    val stations = moves.map(Move::from).distinct().sorted().filterNot { it == 0 }
+    val stations = moves.map(Move::from).distinct().sorted().filterNot { it == 0 || it == 1 }
 
-    data class Move(val from: Int, val to: Int, val distr: Boolean = true) {
+    data class Move(val from: Int, val to: Int) {
         override fun toString(): String {
             return "$from->$to(${abs(from - to)})"
         }
+
+        fun reverse() = Move(1 - this.to, 1 - this.from)
+
     }
 
     fun nextStates(movesLeft: Int): Sequence<State> {
@@ -87,51 +96,46 @@ data class State(val state: Map<Int, Int>, val moves: List<Move>) {
         if (movesLeft == 0) {
             return sequenceOf(this)
         }
-        val lastMove = moves.lastOrNull()
 
-        return state.keys.sortedDescending().asSequence().flatMap { from ->
+
+        val possibleMoves = state.keys.sortedDescending().flatMap { from ->
             val coinsLeft = state[from]!!
-            val start = min(
-                (from + coinsLeft),
-                moves.filter { it.from == from }.minOfOrNull { it.to } ?: Int.MAX_VALUE)
-            (start downTo from - coinsLeft).asSequence()
-                .filter { it != from }
-                .flatMap { to -> move(from, to, movesLeft - 1, emptySet()) }
-                .flatMap { it.nextStates(movesLeft - 1) }
+            (from + coinsLeft downTo from - coinsLeft)
+                .filterNot { it == from }
+                .map { from to it }
         }
 
-    }
+        val bbl = bl.intersect(possibleMoves)
 
-    private fun move(
-        from: Int,
-        to: Int,
-        movesLeft: Int,
-        blacklist: Set<Int>,
-        distr: Boolean = true
-    ): Sequence<State> {
-        require(from != to)
-//        println("move: $from -> $to, movesLeft: $movesLeft")
-        val newState = state.toMutableMap()
-        val coins = abs(from - to)
+        val moves = possibleMoves.filterNot { bbl.contains(it) }
 
-        val destCount = newState.getOrDefault(to, 0)
-//        if (destCount > 0 && moves.last { it.to == to }.from > from) {
+        return (0 until moves.size).asSequence()
+            .flatMap {
+                val from = moves[it].first
+                val to = moves[it].second
+                require(from != to)
+                //        println("move: $from -> $to, movesLeft: $movesLeft")
+                val newState = state.toMutableMap()
+                val coins = abs(from - to)
+                val destCount = newState.getOrDefault(to, 0)
+                //        if (destCount > 0 && moves.last { it.to == to }.from > from) {
 //            return emptySequence()
 //        }
-        newState[to] = destCount + coins
-
-        val newFromCount = state[from]!! - coins
-        require(newFromCount >= 0)
-        if (newFromCount == 0) {
-            newState.remove(from)
-        } else {
-            newState[from] = newFromCount
-        }
-
-        if (newState.count { it.key != 1 && it.value > 0 } > movesLeft) {
-            return emptySequence()
-        }
-
-        return sequenceOf(State(newState.toMap(), moves + Move(from, to, distr)))
+                newState[to] = destCount + coins
+                val newFromCount = state[from]!! - coins
+                require(newFromCount >= 0)
+                if (newFromCount == 0) {
+                    newState.remove(from)
+                } else {
+                    newState[from] = newFromCount
+                }
+                if (newState.count { it.key != 1 && it.value > 0 } > movesLeft - 1) {
+                    emptySequence()
+                } else {
+                    sequenceOf(State(newState.toMap(), this.moves + Move(from, to), bbl + moves.subList(0, it)))
+                }
+            }
+            .flatMap { it.nextStates(movesLeft - 1) }
     }
+
 }
