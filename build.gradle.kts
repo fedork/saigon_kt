@@ -23,4 +23,5 @@ kotlin {
 }
 application {
     mainClass = "net.karpelevitch.MainKt"
+    applicationDefaultJvmArgs = listOf("-mx15g")
 }
