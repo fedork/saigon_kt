@@ -96,28 +96,35 @@ private fun findSolution(n: Int, firstOnly: Boolean = true): Int {
 
 //        println("Next states: ${next.size}")
         val nextStates = mutableListOf<St>()
+        val solvedPoints = mutableListOf<Triple<St, Move, St>>()
         next.forEach { (from, move, to) ->
 //            println("From: $from To: $to Move: $move")
+
             val s: Seen? = seen.get(to)
             if (s == null) {
                 seen[to] = Seen(k+1, mutableListOf(Pair(move, from)))
                 nextStates.add(to)
                 if (solutions.contains(to)) {
-                    pathsTo(from, seen).flatMap { head ->
-                        pathsTo(to.invert(), seen).map { tail ->
-                            head  + move + reverseMoves(tail)
-                        }
-                    }.forEach { path ->
-                        if (firstOnly) {
-                            println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
-                            return k
-                        }
-                        solved.putIfAbsent(path.sorted(), path)
-                    }
-
+                    solvedPoints.add(Triple(from, move, to))
                 }
             } else if (s.steps == k+1) {
                 s.paths.add(Pair(move, from))
+                if (solutions.contains(to)) {
+                    solvedPoints.add(Triple(from, move, to))
+                }
+            }
+        }
+        solvedPoints.forEach { (from, move, to) ->
+            pathsTo(from, seen).flatMap { head ->
+                pathsTo(to.invert(), seen).map(::reverseMoves).map { tail ->
+                    head  + move + tail
+                }
+            }.forEach { path ->
+                if (firstOnly) {
+                    println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
+                    return k
+                }
+                solved.putIfAbsent(path.sorted(), path)
             }
         }
 

@@ -29,7 +29,7 @@ fun main(args: Array<String>) {
 private fun printAllSolutions(n: Int, startK: Int = 1): Int {
     val start = markNow()
     val state = State(n)
-    for (k in startK.. n) {
+    for (k in startK..n) {
         var count = 0L;
         val solutions = ArrayList<State>()
         val nextStates = state.nextStates(k)
@@ -61,14 +61,14 @@ private fun printAllSolutions(n: Int, startK: Int = 1): Int {
 }
 
 
-private fun printFirstSolution(n: Int, state: State = State(n), startK: Int):Int {
+private fun printFirstSolution(n: Int, state: State = State(n), startK: Int): Int {
     val start = markNow()
     for (k in startK..n) {
         val nextStates = state.nextStates(k)
         val solution = nextStates.firstOrNull()
         if (solution != null) {
             println("Can solve $n in $k moves with: ${solution.moves} t=${start.elapsedNow()}")
-            require(k==1 || k>startK)
+            require(k == 1 || k > startK)
             return k
         }
 //        println("Can't solve $n in $k moves t=${start.elapsedNow()}")
@@ -96,22 +96,52 @@ data class State(val state: Map<Int, Int>, val moves: List<Move>, val count: Int
     val stations = moves.map(Move::from).distinct().sorted().filterNot { it == 0 || it == 1 }
     val sortedMoves = moves.sorted()
 
-    fun nextStates1(movesLeft: Int): Sequence<State> {
-        return state.keys.sortedDescending().asSequence().flatMap { from ->
+    fun nextStates(movesLeft: Int): Sequence<State> {
+        if (movesLeft < state.entries.count { it.key != 1 && it.value > 0 }) {
+            return emptySequence() // not enough moves left to move all coins to target
+        }
+        if (movesLeft == 0) {
+            return sequenceOf(this)
+        }
+
+        val possibleMoves = state.keys.sortedDescending().flatMap { from ->
             val coinsLeft = state[from]!!
             (from + coinsLeft downTo from - coinsLeft)
                 .filterNot { it == from }
                 .map { Move(from, it) }
-        }.mapNotNull{move(it, movesLeft)}
-    }
+        }
 
-    fun nextStates2(states: Sequence<State>, movesLeft: Int): Sequence<State> {
-        if (movesLeft==0) return states
-        return nextStates2(states.flatMap {  it.nextStates1(movesLeft)}.distinctBy { it.sortedMoves }, movesLeft - 1)
-    }
+        val moves = possibleMoves.filter { move ->
+            val mm = moves + move
 
-    fun nextStates(movesLeft: Int): Sequence<State> {
-       return nextStates2(sequenceOf(this), movesLeft)
+            fun permute(l: List<Move>): Sequence<List<Move>> {
+                if (l.isEmpty()) return sequenceOf(emptyList())
+                return l.indices.asSequence().flatMap { i ->
+                    val head = listOf(l[i])
+                    val tail = l.subList(0, i) + l.subList(i + 1, l.size)
+                    permute(tail).map { head + it }
+                }
+            }
+
+            permute(mm.sorted()).first {
+                val st = mapOf(0 to count).toMutableMap()
+                for (m in it) {
+                    val fr = st.getOrDefault(m.from, 0) - m.count
+                    if (fr < 0) {
+                        return@first false
+                    }
+                    st[m.from] = fr
+                    st[m.to] = st.getOrDefault(m.to, 0) + m.count
+                }
+                true
+            }.equals(mm)
+        }
+
+        return moves.asSequence()
+            .mapNotNull { m ->
+                move(m, movesLeft)
+            }
+            .flatMap { it.nextStates(movesLeft - 1) }
     }
 
     private fun move(m: Move, movesLeft: Int): State? {
