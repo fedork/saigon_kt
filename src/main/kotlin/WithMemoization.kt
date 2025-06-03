@@ -1,9 +1,7 @@
 package net.karpelevitch
 
-import kotlin.collections.plus
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.sequences.forEach
 import kotlin.time.TimeSource.Monotonic.markNow
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -106,11 +104,21 @@ private fun findSolution(n: Int, firstOnly: Boolean = true): Int {
                 nextStates.add(to)
                 if (solutions.contains(to)) {
                     solvedPoints.add(Triple(from, move, to))
+                    if (firstOnly) {
+                        val path = pathsTo(from, seen).first() + move + reverseMoves(pathsTo(to.invert(), seen).first())
+                        println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
+                        return k
+                    }
                 }
             } else if (s.steps == k+1) {
                 s.paths.add(Pair(move, from))
                 if (solutions.contains(to)) {
                     solvedPoints.add(Triple(from, move, to))
+                    if (firstOnly) {
+                        val path = pathsTo(from, seen).first() + move + reverseMoves(pathsTo(to.invert(), seen).first())
+                        println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
+                        return k
+                    }
                 }
             }
         }
@@ -120,10 +128,6 @@ private fun findSolution(n: Int, firstOnly: Boolean = true): Int {
                     head  + move + tail
                 }
             }.forEach { path ->
-                if (firstOnly) {
-                    println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
-                    return k
-                }
                 solved.putIfAbsent(path.sorted(), path)
             }
         }
