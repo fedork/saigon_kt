@@ -78,6 +78,16 @@ private fun printFirstSolution(n: Int, state: State = State(n), startK: Int): In
 }
 
 data class Move(val from: Int, val to: Int) : Comparable<Move> {
+    companion object {
+        private val cache = HashMap<Int, HashMap<Int, Move>>()
+
+        fun get(from: Int, to: Int) : Move {
+            if (from == to) {
+                throw IllegalArgumentException("Can't move from $from to $to")
+            }
+            return cache.computeIfAbsent(from) { HashMap() }.computeIfAbsent(to) { Move(from, to) }
+        }
+    }
     val count = abs(from - to)
     override fun toString(): String {
         return "$from->$to(${abs(from - to)})"

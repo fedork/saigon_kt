@@ -2,6 +2,7 @@ package net.karpelevitch
 
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource.Monotonic.markNow
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -50,6 +51,7 @@ private fun findSolution(n: Int, firstOnly: Boolean = true): Int {
     var current = listOf(init)
     var solved = mutableMapOf<List<Move>, List<Move>>()
     var solutions = mutableSetOf<St>(init.invert())
+    var nextPrint = start + 1.minutes
 //    println("Finding solution for $n")
     while (true) {
 //        println("k=$k")
@@ -97,16 +99,15 @@ private fun findSolution(n: Int, firstOnly: Boolean = true): Int {
         val solvedPoints = mutableListOf<Triple<St, Move, St>>()
         next.forEach { (from, move, to) ->
 //            println("From: $from To: $to Move: $move")
-
             val s: Seen? = seen.get(to)
             if (s == null) {
                 seen[to] = Seen(k+1, mutableListOf(Pair(move, from)))
                 nextStates.add(to)
                 if (solutions.contains(to)) {
                     solvedPoints.add(Triple(from, move, to))
+                    val path = pathsTo(from, seen).first() + move + reverseMoves(pathsTo(to.invert(), seen).first())
+                    println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
                     if (firstOnly) {
-                        val path = pathsTo(from, seen).first() + move + reverseMoves(pathsTo(to.invert(), seen).first())
-                        println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
                         return k
                     }
                 }
@@ -121,7 +122,12 @@ private fun findSolution(n: Int, firstOnly: Boolean = true): Int {
                     }
                 }
             }
+            if (nextPrint.hasPassedNow()) {
+                println("Found ${nextStates.size} next states for ${k/2} solved: ${solvedPoints.size}")
+                nextPrint = markNow() + 1.minutes
+            }
         }
+        println("for $k total solved: ${solvedPoints.size}")
         solvedPoints.forEach { (from, move, to) ->
             pathsTo(from, seen).flatMap { head ->
                 pathsTo(to.invert(), seen).map(::reverseMoves).map { tail ->
@@ -144,12 +150,16 @@ private fun findSolution(n: Int, firstOnly: Boolean = true): Int {
                             sequenceOf(head + reverseMoves(tail), tail + reverseMoves(head))
                         }
                     }.forEach { path ->
+                        println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
                         if (firstOnly) {
-                            println("SOLVED $n in $k with $path moves t=${start.elapsedNow()}")
                             return k
                         }
                         solved.putIfAbsent(path.sorted(), path)
                     }
+                }
+                if (nextPrint.hasPassedNow()) {
+                    println("Processed ${solutions.size}/${nextStates.size} solutions for $n in $k solved: ${solved.size}")
+                    nextPrint = markNow() + 1.minutes
                 }
             }
         }

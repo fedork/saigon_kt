@@ -23,11 +23,11 @@ kotlin {
 }
 application {
     mainClass = "net.karpelevitch.MainKt"
-    applicationDefaultJvmArgs = listOf("-mx20g")
+    applicationDefaultJvmArgs = listOf("-mx40g")
 }
 
 task("runMem", JavaExec::class) {
     mainClass.set("net.karpelevitch.WithMemoizationKt")
     classpath = sourceSets.main.get().runtimeClasspath
-    jvmArgs = listOf("-mx20g")
+    jvmArgs = listOf("-mx100g")
 }
