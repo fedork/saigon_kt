@@ -34,7 +34,7 @@ private fun prinatAll(n: Int) {
     println("Took $time")
 }
 
-class St1(val st: IntArray, val moves: List<Int> = emptyList(), val moveList: List<Move>) {
+private class St1(val st: IntArray, val moves: List<Int> = emptyList(), val moveList: List<Move>) {
 
     companion object {
         var printNext = markNow() + 1.minutes
@@ -54,7 +54,7 @@ class St1(val st: IntArray, val moves: List<Int> = emptyList(), val moveList: Li
     }
 
     fun nextStates(movesLeft: Int): Sequence<St1> {
-        if (movesLeft*2 < st.mapIndexed { i, v -> if (i != 1 && v != 0) 1 else 0 }.sum()) {
+        if (movesLeft * 2 < st.mapIndexed { i, v -> if (i != 1 && v != 0) 1 else 0 }.sum()) {
             return emptySequence()
         }
         if (movesLeft == 0) {
