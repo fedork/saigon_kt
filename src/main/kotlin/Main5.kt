@@ -2,10 +2,17 @@ package net.karpelevitch
 
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource.Monotonic.markNow
 
 fun main(args: Array<String>) {
-
+    if (args.isNotEmpty()) {
+        if (args[0] == "first") {
+            firstOnly = true
+        } else if (args[0] == "strict") {
+            strict = true
+        }
+    }
     for (n in 0..120) {
         val start = markNow()
         var k = 0
@@ -13,14 +20,20 @@ fun main(args: Array<String>) {
         while (true) {
             solutions = getSolutions(n, k)
             if (solutions.isNotEmpty()) break
-            println("RESULT can't solve $n in $k moves t=${start.elapsedNow()}")
+            if (!firstOnly) {
+                println("RESULT can't solve $n in $k moves t=${start.elapsedNow()}")
+            }
             k++
         }
-        getValidSoutions(n, k, solutions).forEachIndexed { i, it ->
-            val stations = it.map { it.to }.filterNot { it == 1 || it == 0 }.distinct().sortedByDescending { Math.abs(it) }
-            println("can solve $n in $k moves with (${i+1}) $stations / $it")
-        }
-        println("RESULT can solve $n in $k moves t=${start.elapsedNow()}")
+        getValidSoutions(n, k, solutions).mapIndexed { i, it ->
+            val stations = it.map { it.to }.filterNot { it == 1 || it == 0 }.distinct()
+                .sortedByDescending { Math.abs(it) }
+            Pair(it, stations)
+        }.sortedByDescending { it.second.maxBy { Math.abs(it) } }
+            .forEachIndexed { i, (path, stations) ->
+                println("can solve $n in $k moves with (${i + 1}) $stations / $path t=${start.elapsedNow()}")
+            }
+        if (!firstOnly) println("RESULT can solve $n in $k moves t=${start.elapsedNow()}")
     }
 }
 
@@ -29,6 +42,9 @@ private data class Sol(
     var canSolve: Int? = null,
     var solutions: List<List<Move>>? = null
 )
+
+private var firstOnly = false
+private var strict = false
 
 private val sol = mutableMapOf<Int, Sol>()
 
@@ -46,22 +62,30 @@ fun getSolutions(n: Int, k: Int): List<List<Move>> {
             return s.solutions!!
         }
         // add trivial solutions
-        getSolutions(n - 1, k - 1).forEach {
-            solutions.add(listOf(Move(0, 1)) + it)
-        }
-        getSolutions(n + 1, k - 1).forEach {
-            if (it.none { it.count > n }) {
-                solutions.add(listOf(Move(1, 0)) + it)
+        val s = getSolutions(n - 1, k - 1).asSequence()
+            .map { listOf(Move(0, 1)) + it } +
+                getSolutions(n + 1, k - 1).asSequence()
+                    .mapNotNull {
+                        if (it.none { it.count > n }) listOf(
+                            Move(
+                                1,
+                                0
+                            )
+                        ) + it else null
+                    } +
+                getSolutions(mapOf(Pair(0, n), Pair(1, -n)), n, k)
+
+        if (firstOnly) {
+            val first = s
+                .mapNotNull { validOrNull(n, k, it) }
+                .firstOrNull()
+            if (first != null) {
+                solutions.add(first)
             }
+        } else {
+            solutions.addAll(s)
         }
-        // add other solutions
-        val initState = mapOf(Pair(0, n), Pair(1, -n))
-
-        solutions.addAll(getSolutions(initState, n, k))
     }
-
-
-
     s.maxTried = k
     if (solutions.isNotEmpty()) {
         s.canSolve = k
@@ -72,6 +96,10 @@ fun getSolutions(n: Int, k: Int): List<List<Move>> {
 }
 
 private fun getValidSoutions(n: Int, k: Int, solutions: List<List<Move>>): List<List<Move>> {
+    return solutions.mapNotNull { ss -> validOrNull(n, k, ss) }
+}
+
+private fun validOrNull(n: Int, k: Int, ss: List<Move>): List<Move>? {
     fun getValidSeq(st: Map<Int, Int>, head: List<Move>, tail: List<Move>): Sequence<List<Move>> {
         if (tail.isEmpty()) {
             require(st.all { it.value == if (it.key == 1) n else 0 })
@@ -82,22 +110,21 @@ private fun getValidSoutions(n: Int, k: Int, solutions: List<List<Move>>): List<
             .flatMap { getValidSeq(move(st, it), head + it, tail - it) }
     }
 
-    return solutions.mapNotNull { ss ->
-        val validS = getValidSeq(mapOf(Pair(0, n)), listOf(), ss).firstOrNull()
-        if (validS == null) {
-            println("INVALID solution for $n in $k: $ss")
-        }
-        validS
+    val validS = getValidSeq(mapOf(Pair(0, n)), listOf(), ss).firstOrNull()
+    if (validS == null) {
+        println("INVALID solution for $n in $k: $ss")
     }
+    return validS
 }
 
 fun move(st: Map<Int, Int>, move: Move): Map<Int, Int> {
     val mm = st.toMutableMap()
-    mm.compute(move.from) { _, v -> ((v?:0) - move.count) }
-    mm.compute(move.to) { _, v -> ((v?:0) + move.count) }
+    mm.compute(move.from) { _, v -> ((v ?: 0) - move.count) }
+    mm.compute(move.to) { _, v -> ((v ?: 0) + move.count) }
     return mm.filterValues { it != 0 }
 }
 
+var nextPrint = markNow() + 1.minutes
 fun getSolutions(
     st: Map<Int, Int>,
     n: Int,
@@ -110,10 +137,14 @@ fun getSolutions(
     if (k == 0) {
         return sequenceOf(prefix)
     }
+    if (nextPrint.hasPassedNow()) {
+        println("processing $n in ${k+ prefix.size}:  $prefix")
+        nextPrint = markNow() + 1.minutes
+    }
     return if (blackList.isEmpty()) {
         // start with 2 since 1 is trivial (already handled)
         val bl = listOf(0)
-        (2..n).asSequence()
+        getZeroRange(n).asSequence()
             .flatMap { sequenceOf(Move.get(0, it), Move.get(it, 0)) }
             .flatMap { getSolutions(move(st, it), n, k - 1, prefix + it, bl) }
     } else {
@@ -124,7 +155,7 @@ fun getSolutions(
         //TODO: BL!!!!
         val s1: Sequence<List<Move>> = // only same dir
             getSolutions(move(st, lastMove), n, k - 1, prefix + lastMove, blackList)
-        val s2: Sequence<List<Move>> = (target + 1..min(n + 1, base + n)).asSequence()
+        val s2: Sequence<List<Move>> = getSameBaseRange(target, n, base)
             .filterNot { blackList.contains(it) }
             .flatMap { sequenceOf(Move.get(base, it), Move.get(it, base)) }
             .flatMap { getSolutions(move(st, it), n, k - 1, prefix + it, blackList) }
@@ -133,7 +164,7 @@ fun getSolutions(
         else {
             val nextBase = st.filterNot { it.value == 0 }.keys.min()
             val newBlackList = blackList + nextBase
-            (max(2, nextBase - n)..min(n + 1, nextBase + n))
+            nextBaseRange(nextBase, n)
                 .asSequence()
                 .filterNot { newBlackList.contains(it) }
                 .flatMap { sequenceOf(Move.get(nextBase, it), Move.get(it, nextBase)) }
@@ -141,5 +172,34 @@ fun getSolutions(
         }
         s1 + s2 + s3
 
+    }
+}
+
+private fun nextBaseRange(nextBase: Int, n: Int): IntRange {
+    if (strict) {
+        return ((nextBase - n)..(nextBase + n))
+    } else {
+        return (max(2, nextBase - n)..min(n + 1, nextBase + n))
+    }
+}
+
+private fun getSameBaseRange(target: Int, n: Int, base: Int): Sequence<Int> {
+    if (strict) {
+        if (base == 0) {
+            // exclude 1 as a target for 0 (triviality)
+            return (target + 1..(base + n)).asSequence().filterNot { it == 1 }
+        } else {
+            return (target + 1..(base + n)).asSequence()
+        }
+    } else {
+        return (target + 1..min(n + 1, base + n)).asSequence()
+    }
+}
+
+private fun getZeroRange(n: Int): Sequence<Int> {
+    if (strict) {
+        return (-n..n).asSequence().filterNot { it == 0 || it == 1 }
+    } else {
+        return (2..n).asSequence()
     }
 }
