@@ -1,19 +1,25 @@
 package net.karpelevitch
 
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource.Monotonic.markNow
 
 fun main(args: Array<String>) {
+    var startN = 0
     if (args.isNotEmpty()) {
         if (args[0] == "first") {
             firstOnly = true
         } else if (args[0] == "strict") {
             strict = true
         }
+
+        if (args.size > 1) {
+            startN = args[1].toInt()
+        }
     }
-    for (n in 0..120) {
+    for (n in startN..1000) {
         val start = markNow()
         var k = 0
         var solutions: List<List<Move>>
@@ -29,7 +35,7 @@ fun main(args: Array<String>) {
             val stations = it.map { it.to }.filterNot { it == 1 || it == 0 }.distinct()
                 .sortedByDescending { Math.abs(it) }
             Pair(it, stations)
-        }.sortedByDescending { it.second.maxBy { Math.abs(it) } }
+        }.sortedByDescending { it.second.maxByOrNull { Math.abs(it) } ?: 1 }
             .forEachIndexed { i, (path, stations) ->
                 println("can solve $n in $k moves with (${i + 1}) $stations / $path t=${start.elapsedNow()}")
             }
@@ -95,9 +101,8 @@ fun getSolutions(n: Int, k: Int): List<List<Move>> {
     return solutions
 }
 
-private fun getValidSoutions(n: Int, k: Int, solutions: List<List<Move>>): List<List<Move>> {
-    return solutions.mapNotNull { ss -> validOrNull(n, k, ss) }
-}
+private fun getValidSoutions(n: Int, k: Int, solutions: List<List<Move>>): List<List<Move>> =
+    solutions.mapNotNull { validOrNull(n, k, it.sorted()) }
 
 private fun validOrNull(n: Int, k: Int, ss: List<Move>): List<Move>? {
     fun getValidSeq(st: Map<Int, Int>, head: List<Move>, tail: List<Move>): Sequence<List<Move>> {
@@ -133,7 +138,26 @@ fun getSolutions(
     blackList: List<Int> = emptyList()
 ): Sequence<List<Move>> {
     val nonZeros = st.count { it.value != 0 }
-    if (nonZeros > k * 2) return emptySequence()
+    val slack = k*2 - nonZeros
+    if (slack < 0) return emptySequence() // not solvable
+    if (slack == 0) {
+        // endgame
+        var st1 = st
+        var moves = prefix
+        while (st1.isNotEmpty()) {
+            val k1 = st1.keys.min()
+            val v1 = st1[k1]!!
+            val k2 = k1 + abs(v1)
+            val v2 = st1.getOrDefault(k2, 0)
+            if (v1+v2 != 0) {
+                return emptySequence() // not solvable
+            }
+            val m = if (v1 > 0) Move.get(k1, k2) else Move.get(k2, k1)
+            st1 = move(st1, m)
+            moves = moves + m
+        }
+        return sequenceOf(moves)
+    }
     if (k == 0) {
         return sequenceOf(prefix)
     }
