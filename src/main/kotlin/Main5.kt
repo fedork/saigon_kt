@@ -6,6 +6,8 @@ import kotlin.math.min
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource.Monotonic.markNow
 
+var start = markNow()
+
 fun main(args: Array<String>) {
     var startN = 0
     if (args.isNotEmpty()) {
@@ -20,7 +22,7 @@ fun main(args: Array<String>) {
         }
     }
     for (n in startN..1000) {
-        val start = markNow()
+        start = markNow()
         var k = 0
         var solutions: List<List<Move>>
         while (true) {
@@ -129,7 +131,7 @@ fun move(st: Map<Int, Int>, move: Move): Map<Int, Int> {
     return mm.filterValues { it != 0 }
 }
 
-var nextPrint = markNow() + 1.minutes
+var nextPrint = markNow() + 5.minutes
 fun getSolutions(
     st: Map<Int, Int>,
     n: Int,
@@ -162,8 +164,8 @@ fun getSolutions(
         return sequenceOf(prefix)
     }
     if (nextPrint.hasPassedNow()) {
-        println("processing $n in ${k+ prefix.size}:  $prefix")
-        nextPrint = markNow() + 1.minutes
+        println("processing $n in ${k+ prefix.size}:  $prefix t=${start.elapsedNow()}")
+        nextPrint = markNow() + 5.minutes
     }
     return if (blackList.isEmpty()) {
         // start with 2 since 1 is trivial (already handled)
