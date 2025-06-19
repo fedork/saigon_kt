@@ -10,28 +10,39 @@ var start = markNow()
 
 fun main(args: Array<String>) {
     var startN = 0
+    var startK = 0
     if (args.isNotEmpty()) {
         if (args[0] == "first") {
             firstOnly = true
         } else if (args[0] == "strict") {
             strict = true
+        } else if (args[0] == "only") {
+            onlyThis = true
         }
 
         if (args.size > 1) {
             startN = args[1].toInt()
         }
+
+        if (args.size > 2) {
+            startK = args[2].toInt()
+        }
     }
     for (n in startN..1000) {
         start = markNow()
-        var k = 0
+        var k = startK
         var solutions: List<List<Move>>
-        while (true) {
-            solutions = getSolutions(n, k)
-            if (solutions.isNotEmpty()) break
-            if (!firstOnly) {
-                println("RESULT can't solve $n in $k moves t=${start.elapsedNow()}")
+        if (!onlyThis) {
+            while (true) {
+                solutions = getSolutions(n, k)
+                if (solutions.isNotEmpty()) break
+                if (!firstOnly) {
+                    println("RESULT can't solve $n in $k moves t=${start.elapsedNow()}")
+                }
+                k++
             }
-            k++
+        } else {
+            solutions = getSolutions(n, startK)
         }
         getValidSoutions(n, k, solutions).mapIndexed { i, it ->
             val stations = it.map { it.to }.filterNot { it == 1 || it == 0 }.distinct()
@@ -42,6 +53,7 @@ fun main(args: Array<String>) {
                 println("can solve $n in $k moves with (${i + 1}) $stations / $path t=${start.elapsedNow()}")
             }
         if (!firstOnly) println("RESULT can solve $n in $k moves t=${start.elapsedNow()}")
+        if (onlyThis) break
     }
 }
 
@@ -53,15 +65,18 @@ private data class Sol(
 
 private var firstOnly = false
 private var strict = false
+private var onlyThis = false
 
 private val sol = mutableMapOf<Int, Sol>()
 
-fun getSolutions(n: Int, k: Int): List<List<Move>> {
+private fun getSolutions(n: Int, k: Int): List<List<Move>> {
     val s = sol.getOrPut(n, { Sol() })
     val solutions = mutableListOf<List<Move>>()
 
     if (n == 0) {
         solutions.add(emptyList())
+    } else if (onlyThis) {
+        solutions.addAll(getSolutions(mapOf(Pair(0, n), Pair(1, -n)), n, k))
     } else {
         if (s.maxTried >= k) {
             if (k < (s.canSolve ?: Int.MAX_VALUE)) {

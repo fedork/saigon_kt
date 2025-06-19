@@ -12,6 +12,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation("com.google.guava:guava:33.4.8-jre")
     testImplementation(kotlin("test"))
 }
 
@@ -25,10 +26,9 @@ application {
     mainClass = "net.karpelevitch.Main5Kt"
 }
 
-task("runMem", JavaExec::class) {
-    mainClass.set("net.karpelevitch.WithMemoizationKt")
+task("fwd", JavaExec::class) {
+    mainClass.set("net.karpelevitch.ForwardKt")
     classpath = sourceSets.main.get().runtimeClasspath
-    jvmArgs = listOf("-mx100g")
 }
 
 task("runS", JavaExec::class) {
