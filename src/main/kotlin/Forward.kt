@@ -4,10 +4,11 @@ import com.google.common.collect.Comparators
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource.Monotonic.markNow
 
-fun main() {
-    var n = 1
+fun main(args: Array<String>) {
+    var n = args.getOrElse(0) { "1" }.toInt()
     while (true) {
 //        println("n=$n")
         val startTime = markNow()
@@ -50,6 +51,7 @@ private fun sig(moves: List<Move>) = moves.map { it.count }.sortedDescending()
 
 private fun solve(n: Int, distance: Int, k: Int): Sequence<List<Move>> =
     sequence {
+        val start = markNow()
         // generate all sets ok a1..ak such that a1^2+a2^2+...+ak^2 = n*distance
         fun moveSets(targetSum: Int, maxA: Int, prefix: List<Int>, k: Int): Sequence<List<Int>> =
             sequence {
@@ -71,6 +73,10 @@ private fun solve(n: Int, distance: Int, k: Int): Sequence<List<Move>> =
             }
 
         val moveSets = moveSets(n * distance, min(n, distance), emptyList(), k).toList()
+
+        println("moveSets $n $distance $k ${moveSets.size} t=${start.elapsedNow()}")
+
+        var pr = markNow() + 5.minutes
 
         // for each moveset find first valid set of moves
         moveSets.forEach { moveset ->
@@ -94,6 +100,10 @@ private fun solve(n: Int, distance: Int, k: Int): Sequence<List<Move>> =
                                 yield(prefix + Move.get(from, distance))
                             }
                         } else {
+                            if (pr.hasPassedNow()) {
+                                println("processing: $n $distance $k $moveset $movesleft t=${start.elapsedNow()}")
+                                pr = markNow() + 5.minutes
+                            }
                             val from = st.keys.min()
 
                             movesleft.distinct()
