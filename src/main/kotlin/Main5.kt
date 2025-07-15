@@ -6,7 +6,7 @@ import kotlin.math.min
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource.Monotonic.markNow
 
-var start = markNow()
+private var start = markNow()
 
 fun main(args: Array<String>) {
     var startN = 0
@@ -118,13 +118,13 @@ private fun getSolutions(n: Int, k: Int): List<List<Move>> {
     return solutions
 }
 
-private fun getValidSoutions(n: Int, k: Int, solutions: List<List<Move>>): List<List<Move>> =
+public fun getValidSoutions(n: Int, k: Int, solutions: List<List<Move>>): List<List<Move>> =
     solutions.mapNotNull { validOrNull(n, k, it.sorted()) }
 
-private fun validOrNull(n: Int, k: Int, ss: List<Move>): List<Move>? {
+public fun validOrNull(n: Int, k: Int, ss: List<Move>): List<Move>? {
     fun getValidSeq(st: Map<Int, Int>, head: List<Move>, tail: List<Move>): Sequence<List<Move>> {
         if (tail.isEmpty()) {
-            require(st.all { it.value == if (it.key == 1) n else 0 })
+//            require(st.all { it.value == if (it.key == 1) n else 0 })
             return sequenceOf(head)
         }
         return tail.asSequence()

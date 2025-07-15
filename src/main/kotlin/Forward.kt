@@ -8,18 +8,20 @@ import kotlin.time.TimeSource.Monotonic.markNow
 
 fun main(args: Array<String>) {
     var n = args.getOrElse(0) { "1" }.toInt()
+    val step = args.getOrElse(1) { "1" }.toInt()
     while (true) {
 //        println("n=$n")
         val startTime = markNow()
-        val snn1 = getOptimalSolutions(n, n + 1)
-        val sn1n = getOptimalSolutions(n + 1, n)
+        val nextN = n + step
+        val snn1 = getOptimalSolutions(n, nextN)
+        val sn1n = getOptimalSolutions(nextN, n)
         val k1 = snn1[0].size
         snn1.forEachIndexed { i, it ->
-            println("NN1 $n move $n to ${n + 1} in $k1 (${i + 1}) ${sig(it)} $it t=${startTime.elapsedNow()}")
+            println("NN1 $n move $n to $nextN in $k1 (${i + 1}) ${sig(it)} $it t=${startTime.elapsedNow()}")
         }
         val k2 = sn1n[0].size
         sn1n.forEachIndexed { i, it ->
-            println("N1N $n move ${n + 1} to $n in $k2 (${i + 1}) ${sig(it)} $it t=${startTime.elapsedNow()}")
+            println("N1N $n move $nextN to $n in $k2 (${i + 1}) ${sig(it)} $it t=${startTime.elapsedNow()}")
         }
 
         val isSymmetric = snn1.map(::sig) == sn1n.map(::sig)
@@ -28,12 +30,12 @@ fun main(args: Array<String>) {
         }
         println("RESULT $n $k1 $k2 $isSymmetric t=${startTime.elapsedNow()}")
 
-        n++
+        n += 1
     }
 }
 
 private fun getOptimalSolutions(n: Int, distance: Int): List<List<Move>> {
-    for (k in 1..n * (n + 1)) {
+    for (k in 1..n * (n + 5)) {
         val sol = sort(solve(n, distance, k))
         if (sol.isNotEmpty()) {
             return sol
@@ -42,11 +44,11 @@ private fun getOptimalSolutions(n: Int, distance: Int): List<List<Move>> {
     throw IllegalStateException("No solution found for $n $distance")
 }
 
-private fun sort(s: Sequence<List<Move>>): List<List<Move>> = s.toList().sortedWith(
+public fun sort(s: Sequence<List<Move>>): List<List<Move>> = s.toList().sortedWith(
     compareBy(Comparators.lexicographical(Comparator.naturalOrder()), ::sig)
 )
 
-private fun sig(moves: List<Move>) = moves.map { it.count }.sortedDescending()
+public fun sig(moves: List<Move>) = moves.map { it.to - it.from }.sortedDescending()
 
 private fun solve(n: Int, distance: Int, k: Int): Sequence<List<Move>> =
     sequence {
