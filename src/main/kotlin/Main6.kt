@@ -154,12 +154,15 @@ fun generateMatrices(k: Int, base: Matrix = Matrix(arrayOf(IntArray(1, { 0 }))),
         yield(base)
     } else if (i == 0 || base.matrix[i].any { it != 0 }) {
         val groups = (i + 1 until base.size).groupBy { base.matrix[it] }.values.sortedWith(compareBy({ it.size }, { it[0] }))
-        val newGroups = genNewRows(k, base.size, allowNegative).groupBy { moveCount(it) }
-        genRow(k, groups, allowNegative).forEach { row1 ->
+        val maxK = if (i>1 && (0..i-2).all {base.matrix[i-1][it]==base.matrix[i][it]}) {
+            min(k,base.matrix[i-1].mapIndexed { i1,c->if (i1>i) abs(c) else c}.sum())
+        } else k
+        val newGroups = genNewRows(maxK, base.size, allowNegative).groupBy { moveCount(it) }
+        genRow(maxK, groups, allowNegative).forEach { row1 ->
             val count: Int = moveCount(row1)
             val m1 = base.copyOf()
             row1.forEach { (j, c) -> m1.set(i, j, c) }
-            newGroups.filterKeys { it <= (k - count) }.forEach { (countNew, rowsNew) ->
+            newGroups.filterKeys { it <= (maxK - count) }.forEach { (countNew, rowsNew) ->
                 rowsNew.forEach { row2 ->
                     val m2 = m1.copyOfSize((row2.maxOfOrNull { it.first } ?: (base.size - 1)) + 1)
                     row2.forEach { (j, c) -> m2.set(i, j, c) }
@@ -215,7 +218,7 @@ fun genGroups(k: Int, group: List<Int>, prefix: List<Pair<Int, Int>> = emptyList
 class Circuit(val voltages: Array<Fraction>, val connections: List<Conn>) {
     companion object {
         fun fromMatrix(m: Matrix, voltages: Array<Fraction>): Circuit {
-            val imap = voltages.withIndex().sortedByDescending { it.value }.mapIndexed { i, v -> v.index to i }.toMap()
+            val imap = voltages.withIndex().sortedByDescending { it.value }.mapIndexed { i, v -> v.index to (i+1) }.toMap()
 
             val conn = (0 until m.size).flatMap { i ->
                 val v1 = voltages[i]
