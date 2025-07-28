@@ -37,6 +37,11 @@ task("cir", JavaExec::class) {
     classpath = sourceSets.main.get().runtimeClasspath
 }
 
+task("cir2", JavaExec::class) {
+    mainClass.set("net.karpelevitch.Main7Kt")
+    classpath = sourceSets.main.get().runtimeClasspath
+}
+
 task("runS", JavaExec::class) {
     mainClass.set("net.karpelevitch.SimplifiedKt")
     classpath = sourceSets.main.get().runtimeClasspath

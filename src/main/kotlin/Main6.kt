@@ -93,7 +93,7 @@ fun printConductanceMatrix(matrix: Array<IntArray>) {
     println("-------------------------------")
 }
 
-class Matrix(val matrix: Array<IntArray>) {
+private class Matrix(val matrix: Array<IntArray>) {
     val size = matrix.size
     val next by lazy {
         val newMatrix = Array(size + 1) { IntArray(size + 1) { 0 } }
@@ -149,7 +149,7 @@ class Matrix(val matrix: Array<IntArray>) {
     fun rescount(): Int = matrix.mapIndexed { i, row -> (i + 1 until size).sumOf { abs(row[it]) } }.sum()
 }
 
-fun generateMatrices(k: Int, base: Matrix = Matrix(arrayOf(IntArray(1, { 0 }))), i: Int = 0, allowNegative: Boolean): Sequence<Matrix> = sequence {
+private fun generateMatrices(k: Int, base: Matrix = Matrix(arrayOf(IntArray(1, { 0 }))), i: Int = 0, allowNegative: Boolean): Sequence<Matrix> = sequence {
     if (k == 0) {
         yield(base)
     } else if (i == 0 || base.matrix[i].any { it != 0 }) {
@@ -186,7 +186,7 @@ fun genNewRows(k: Int, firstRow: Int, allowNegative: Boolean, maxCount: Int = k,
     }
 }
 
-fun genRow(k: Int, groups: List<List<Int>>, allowNegative: Boolean, prefix: List<Pair<Int, Int>> = emptyList()): Sequence<List<Pair<Int, Int>>> = sequence {
+private fun genRow(k: Int, groups: List<List<Int>>, allowNegative: Boolean, prefix: List<Pair<Int, Int>> = emptyList()): Sequence<List<Pair<Int, Int>>> = sequence {
     if (groups.isEmpty()) {
         yield(prefix)
     } else {
@@ -201,7 +201,7 @@ fun genRow(k: Int, groups: List<List<Int>>, allowNegative: Boolean, prefix: List
 private fun moveCount(pairs: List<Pair<Int, Int>>): Int = pairs.sumOf { abs(it.second) }
 
 
-fun genGroups(k: Int, group: List<Int>, prefix: List<Pair<Int, Int>> = emptyList(), maxCount: Int = k, allowNegative: Boolean): Sequence<List<Pair<Int, Int>>> = sequence {
+private fun genGroups(k: Int, group: List<Int>, prefix: List<Pair<Int, Int>> = emptyList(), maxCount: Int = k, allowNegative: Boolean): Sequence<List<Pair<Int, Int>>> = sequence {
     yield(prefix)
     if (!group.isEmpty()) {
         val head = group[0]
@@ -215,7 +215,7 @@ fun genGroups(k: Int, group: List<Int>, prefix: List<Pair<Int, Int>> = emptyList
     }
 }
 
-class Circuit(val voltages: Array<Fraction>, val connections: List<Conn>) {
+private class Circuit(val voltages: Array<Fraction>, val connections: List<Conn>) {
     companion object {
         fun fromMatrix(m: Matrix, voltages: Array<Fraction>): Circuit {
             val imap = voltages.withIndex().sortedByDescending { it.value }.mapIndexed { i, v -> v.index to (i+1) }.toMap()
@@ -250,7 +250,7 @@ class Circuit(val voltages: Array<Fraction>, val connections: List<Conn>) {
 
 
 
-fun toMoves(m: Matrix, voltages: Array<Fraction>): List<Move> {
+private fun toMoves(m: Matrix, voltages: Array<Fraction>): List<Move> {
     // Calculate LCM of all denominators
     val lcm = voltages.map { it.denominator }.reduce { a, b -> ArithmeticUtils.lcm(a, b) }
     require(lcm > 0) { "lcm=$lcm" }
